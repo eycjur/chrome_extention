@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "session_limit",
+  "version": "1.0",
+  "background": {
+    "service_worker": "script.js"
+  },
+  "action": {
+    "background": {
+      "scripts": [
+        "script.js"
+      ]
+    }
+  },
+  "permissions": [
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}

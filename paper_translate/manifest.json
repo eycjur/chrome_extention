@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "paper_translate",
+  "version": "1.0",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ]
+}

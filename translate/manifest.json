@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "translate",
+  "version": "1.0",
+  "icons": {
+    "32": "favicon.ico"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
