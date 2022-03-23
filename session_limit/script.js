@@ -64,7 +64,7 @@ function time_over() {
 // 時間を数える処理
 interval_timer = setInterval(timer, 1000);
 
-// アイコンクリックで10分に設定
+// アイコンクリックで10秒追加に設定
 chrome.action.onClicked.addListener(() => {
   time = Math.max(time, 50) + 10;
   clearInterval(interval_timer);
