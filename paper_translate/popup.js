@@ -8,7 +8,7 @@ function changeText(text, is_new_window = false) {
     .replace(/#/g, "＃")
     .replace(/\|/g, "｜")
     .replace(/:/g, ":\n")
-    .replace(/.,/g, ",")
+    // .replace(/.,/g, ",")
   deep_url += encodeURI(text);
 
   // 新しいウィンドウで開く
@@ -28,8 +28,8 @@ document.addEventListener('DOMContentLoaded', function () {
   let input = document.querySelector('#input');
   input.addEventListener('keydown', function (event) {
     let text = input.value;
-    // ctrl + enter
-    if (event.key == "Enter" && event.ctrlKey) {
+    // ctrl + enter or cmd + enter
+    if (event.key == "Enter" && (event.ctrlKey || event.metaKey)) {
       changeText(text);
       // shift + enter
     } else if (event.key == "Enter" && event.shiftKey) {
