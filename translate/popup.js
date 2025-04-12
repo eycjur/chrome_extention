@@ -7,7 +7,7 @@ function trans(is_not_replace) {
 
   request.onload = function () {
     let data = JSON.parse(this.response);
-    let text = data["text"].toLowerCase();
+    let text = data["text"];
     if (!is_not_replace) {
       text = text.replaceAll(" ", "_");
     }
@@ -23,7 +23,7 @@ function trans(is_not_replace) {
 document.addEventListener('DOMContentLoaded', function () {
   document.querySelector('#before').addEventListener('keydown', function (event) {
     if (event.key == "Enter") {
-      trans(is_not_replace = event.ctrlKey);
+      trans(is_not_replace = !event.ctrlKey && !event.metaKey);
     }
   })
 });

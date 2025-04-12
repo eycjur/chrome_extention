@@ -7,9 +7,12 @@
       "js": [
         "test_period.js"
       ],
+      "css": [
+        "alert.css"
+      ],
       "matches": [
-        "https://*.youtube.com/*",
-        "https://twitter.com/*"
+        "https://*.youtube.com/shorts/*",
+        "https://*.tiktok.com/*"
       ]
     }
   ]
