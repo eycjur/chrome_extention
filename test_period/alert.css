@@ -1,7 +1,7 @@
 .custom-alert {
   display: none; /* デフォルトでは非表示 */
   position: fixed;
-  top: 20%;
+  top: 10%;
   left: 50%;
   transform: translate(-50%, -50%);
   background-color: #f44336;
