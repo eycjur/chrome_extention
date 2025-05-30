@@ -7,6 +7,9 @@
       "css": [
         "caption_selectable.css"
       ],
+      "js": [
+        "caption_autocopy.js"
+      ],
       "matches": [
         "https://meet.google.com/*"
       ]
