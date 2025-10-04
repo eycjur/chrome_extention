@@ -12,7 +12,8 @@
       ],
       "matches": [
         "https://*.youtube.com/shorts/*",
-        "https://*.tiktok.com/*"
+        "https://*.tiktok.com/*",
+        "https://www.instagram.com/*"
       ]
     }
   ]
