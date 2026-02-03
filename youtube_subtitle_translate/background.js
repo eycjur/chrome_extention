@@ -1,4 +1,247 @@
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+// ========================================
+// IndexedDB Dictionary Manager
+// ========================================
+class DictionaryDB {
+  constructor() {
+    this.dbName = 'ejdict';
+    this.version = 1;
+    this.storeName = 'dictionary';
+    this.db = null;
+    this.initPromise = this.init();
+  }
+
+  async init() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, this.version);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        this.db = request.result;
+        resolve(this.db);
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+
+        // オブジェクトストアを作成
+        if (!db.objectStoreNames.contains(this.storeName)) {
+          const store = db.createObjectStore(this.storeName, { keyPath: 'word' });
+          // 単語をキーとしたインデックスを作成（検索用）
+          store.createIndex('word', 'word', { unique: true });
+        }
+      };
+    });
+  }
+
+  async get(word) {
+    await this.initPromise;
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([this.storeName], 'readonly');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.get(word.toLowerCase());
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async put(entry) {
+    await this.initPromise;
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([this.storeName], 'readwrite');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.put(entry);
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async bulkPut(entries) {
+    await this.initPromise;
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([this.storeName], 'readwrite');
+      const store = transaction.objectStore(this.storeName);
+
+      let completed = 0;
+      const total = entries.length;
+
+      for (const entry of entries) {
+        const request = store.put(entry);
+        request.onsuccess = () => {
+          completed++;
+          if (completed === total) {
+            resolve(completed);
+          }
+        };
+        request.onerror = () => {
+          console.error('Error putting entry:', entry.word, request.error);
+        };
+      }
+
+      transaction.oncomplete = () => resolve(completed);
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  async count() {
+    await this.initPromise;
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([this.storeName], 'readonly');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.count();
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async clear() {
+    await this.initPromise;
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([this.storeName], 'readwrite');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.clear();
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+}
+
+// グローバルインスタンス
+const dictionaryDB = new DictionaryDB();
+
+// ========================================
+// EJDict Data Loader
+// ========================================
+async function loadEJDictData() {
+  console.log('[EJDict] Loading dictionary data...');
+
+  const baseUrl = 'https://raw.githubusercontent.com/kujirahand/EJDict/master/src/';
+  const letters = 'abcdefghijklmnopqrstuvwxyz'.split('');
+  const allEntries = [];
+
+  for (let i = 0; i < letters.length; i++) {
+    const letter = letters[i];
+    const url = baseUrl + letter + '.txt';
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error(`[EJDict] Failed to download ${letter}.txt`);
+        continue;
+      }
+
+      const text = await response.text();
+      const entries = parseEJDictText(text);
+      allEntries.push(...entries);
+
+    } catch (error) {
+      console.error(`[EJDict] Error loading ${letter}.txt:`, error);
+    }
+  }
+
+  if (allEntries.length === 0) {
+    throw new Error('No dictionary entries were loaded. Check network connection and GitHub access.');
+  }
+
+  await dictionaryDB.bulkPut(allEntries);
+  await chrome.storage.local.set({ dictionaryLoaded: true, dictionaryVersion: 1 });
+
+  const finalCount = await dictionaryDB.count();
+  console.log(`[EJDict] Dictionary loaded: ${finalCount} entries`);
+}
+
+function parseEJDictText(text) {
+  const entries = [];
+  const lines = text.split('\n');
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+
+    const parts = line.split('\t');
+    if (parts.length < 2) continue;
+
+    const words = parts[0].split(',').map(w => w.trim().toLowerCase());
+    const meaning = parts[1].trim();
+
+    // 類義語を抽出（"=word" 形式）
+    const synonymMatch = meaning.match(/^=\s*(.+)/);
+    let synonyms = [];
+    if (synonymMatch) {
+      // "=them" のような形式の場合、類義語として扱う
+      synonyms = [synonymMatch[1].trim()];
+    } else {
+      // カンマ区切りで複数の単語がある場合、それらは類義語
+      if (words.length > 1) {
+        synonyms = words.slice(1); // 最初の単語以外を類義語とする
+      }
+    }
+
+    // 品詞を抽出
+    const posMatch = meaning.match(/[〈{]([^〉}]+)[〉}]/);
+    const partOfSpeech = posMatch ? posMatch[1] : 'その他';
+
+    // 意味をクリーンアップ
+    const cleanMeaning = meaning
+      .replace(/^=\s*.+$/, '→ ' + (synonymMatch ? synonymMatch[1] : '')) // "=word" を "→ word" に変換
+      .replace(/[〈{][^〉}]+[〉}]/g, '') // 品詞記号を除去
+      .replace(/《[^》]+》/g, '') // 地域・使用域を除去
+      .trim();
+
+    // 各単語に対してエントリを作成
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      if (!word || word.length < 1) continue;
+
+      // 他の単語を類義語として保存（自分自身は除く）
+      const wordSynonyms = words.filter((w, idx) => idx !== i && w);
+
+      entries.push({
+        word: word,
+        meanings: [{
+          partOfSpeech: partOfSpeech,
+          definitions: [{
+            definition: cleanMeaning,
+            example: null
+          }]
+        }],
+        phonetics: [],
+        synonyms: wordSynonyms.length > 0 ? wordSynonyms : (synonyms.length > 0 ? synonyms : undefined)
+      });
+    }
+  }
+
+  return entries;
+}
+
+// 初回起動時に辞書データをロード
+chrome.runtime.onInstalled.addListener(async () => {
+  const { dictionaryLoaded } = await chrome.storage.local.get('dictionaryLoaded');
+  const count = await dictionaryDB.count();
+
+  if (!dictionaryLoaded || count === 0) {
+    try {
+      await loadEJDictData();
+    } catch (error) {
+      console.error('[EJDict] Failed to load dictionary:', error);
+    }
+  }
+});
+
+// Service Worker起動時に辞書の状態を確認
+(async () => {
+  const count = await dictionaryDB.count();
+  if (count === 0) {
+    console.warn('[EJDict] Dictionary is empty');
+  }
+})();
+
+// ========================================
+// Message Handlers
+// ========================================
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'translate') {
     translateText(request.text, request.apiKey)
       .then(result => {
@@ -9,7 +252,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: false, error: error.message });
       });
 
-    // 非同期レスポンスを示すためにtrueを返す
     return true;
   } else if (request.action === 'dictionary') {
     getDictionaryInfo(request.word)
@@ -21,7 +263,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: false, error: error.message });
       });
 
-    // 非同期レスポンスを示すためにtrueを返す
     return true;
   }
 });
@@ -35,7 +276,6 @@ async function translateText(text, apiKey) {
   const sourceLang = 'EN';
 
   const params = new URLSearchParams({
-    auth_key: apiKey,
     text: text,
     target_lang: targetLang,
     source_lang: sourceLang
@@ -46,11 +286,15 @@ async function translateText(text, apiKey) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `DeepL-Auth-Key ${apiKey}`,
       },
       body: params
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Background] DeepL API error:', errorText);
+
       if (response.status === 403) {
         throw new Error('DeepL API キーが無効です');
       } else if (response.status === 456) {
@@ -65,158 +309,33 @@ async function translateText(text, apiKey) {
       return data.translations[0].text;
     }
 
-    throw new Error('Translation failed');
+    throw new Error('Translation failed: No translations in response');
   } catch (error) {
+    console.error('[Background] Translation error:', error);
     throw new Error(`Translation error: ${error.message}`);
-  }
-}
-
-function parseDictionaryResponse(text, originalWord) {
-  if (!text || text.trim() === '') {
-    return null;
-  }
-
-  try {
-    // ExcelAPI.orgからのテキストレスポンスを解析
-    const lines = text.split('\n').filter(line => line.trim());
-
-    if (lines.length === 0) {
-      return null;
-    }
-
-    const result = {
-      word: originalWord || '',  // フォールバックとして元の単語を使用
-      phonetics: [],
-      meanings: []
-    };
-
-    // 最初の行から単語を抽出（可能であれば）
-    const firstLine = lines[0].trim();
-    const wordMatch = firstLine.match(/^([a-zA-Z\s-]+)/);
-    if (wordMatch) {
-      result.word = wordMatch[1].trim();
-    }
-
-    // 発音記号を抽出（があれば）
-    const phoneticMatch = firstLine.match(/\[([^\]]+)\]/);
-    if (phoneticMatch) {
-      result.phonetics.push({
-        text: phoneticMatch[1],
-        audio: null
-      });
-    }
-
-    // 意味を抽出
-    const meanings = [];
-    let currentPartOfSpeech = 'その他';
-
-    lines.forEach((line, index) => {
-      if (index === 0) return; // 最初の行はスキップ
-
-      line = line.trim();
-
-      // 品詞情報を抽出（〈形〉、〈名〉など）
-      const posMatch = line.match(/〈([^〉]+)〉/);
-      if (posMatch) {
-        currentPartOfSpeech = posMatch[1];
-        line = line.replace(/〈[^〉]+〉/, '').trim();
-      }
-
-      // 意味を抽出 - より柔軟な条件に変更
-      if (line && line.length > 2 && !line.match(/^[\s\t]*$/)) {
-        // 番号や特殊記号を除去
-        const cleanDefinition = line
-          .replace(/^\d+[\.\)]\s*/, '') // 行頭の番号を除去
-          .replace(/^[\-\•]\s*/, '') // 行頭の記号を除去
-          .replace(/『([^』]+)』/g, '$1') // 『』を除去
-          .replace(/\([^)]*\)/g, '') // ()内を除去
-          .trim();
-
-        if (cleanDefinition && cleanDefinition.length > 1) {
-          meanings.push({
-            partOfSpeech: currentPartOfSpeech,
-            definitions: [{
-              definition: cleanDefinition,
-              example: null
-            }]
-          });
-        }
-      }
-    });
-
-    // 品詞ごとにグループ化
-    const meaningsByPos = {};
-    meanings.forEach(meaning => {
-      const pos = meaning.partOfSpeech;
-      if (!meaningsByPos[pos]) {
-        meaningsByPos[pos] = [];
-      }
-      meaningsByPos[pos] = meaningsByPos[pos].concat(meaning.definitions);
-    });
-
-    // 最大3つの品詞、各品詞から最大3つの定義
-    result.meanings = Object.entries(meaningsByPos)
-      .slice(0, 3)
-      .map(([partOfSpeech, definitions]) => ({
-        partOfSpeech: partOfSpeech,
-        definitions: definitions.slice(0, 3)
-      }));
-
-    // フォールバック: 何も解析できなかった場合、生テキストから簡単な辞書エントリを作成
-    if (result.meanings.length === 0 && text && text.trim().length > 0) {
-      // 生テキストを使って簡単なエントリを作成
-      const cleanText = text
-        .replace(/\n/g, ' ')
-        .replace(/\s+/g, ' ')
-        .replace(/〈[^〉]+〉/g, '')
-        .replace(/\([^)]*\)/g, '')
-        .replace(/『[^』]*』/g, '')
-        .trim();
-
-      if (cleanText && cleanText.length > 3) {
-        result.meanings = [{
-          partOfSpeech: 'その他',
-          definitions: [{
-            definition: cleanText.substring(0, 200), // 最初の200文字まで
-            example: null
-          }]
-        }];
-      }
-    }
-
-    return result;
-  } catch (error) {
-    console.error('Dictionary parsing error:', error);
-    return null;
   }
 }
 
 async function getDictionaryInfo(word) {
   try {
-    // ExcelAPI.orgの英和辞書APIを使用
-    const response = await fetch(`https://api.excelapi.org/dictionary/enja?word=${encodeURIComponent(word)}`);
+    const searchWord = word.toLowerCase().trim();
+    const count = await dictionaryDB.count();
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('単語が見つかりませんでした');
-      }
-      throw new Error(`Dictionary API error: ${response.status}`);
+    if (count === 0) {
+      console.error('[Dictionary] Database is empty!');
+      throw new Error('辞書データが読み込まれていません。拡張機能のポップアップから「辞書を読み込む」をクリックしてください。');
     }
 
-    const text = await response.text();
-    console.log('Dictionary API response for word "' + word + '":', text);
+    const result = await dictionaryDB.get(searchWord);
 
-    // テキストレスポンスを解析
-    const result = parseDictionaryResponse(text, word);
-
-    console.log('Parsed dictionary result:', result);
-
-    if (!result || (!result.word && !result.meanings.length)) {
-      throw new Error('辞書データが見つかりませんでした');
+    if (result) {
+      return result;
     }
 
-    return result;
+    throw new Error(`単語「${searchWord}」が見つかりませんでした`);
+
   } catch (error) {
+    console.error('[Dictionary] Error:', error);
     throw new Error(`Dictionary lookup failed: ${error.message}`);
   }
 }

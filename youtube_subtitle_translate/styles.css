@@ -112,9 +112,9 @@
   font-weight: 500;
 }
 
+/* ホバー時は何も変更しない（ツールチップだけ表示） */
 .ytp-caption-segment[data-translate-enabled="true"]:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  border-radius: 4px !important;
+  /* 元の字幕スタイルをそのまま維持 */
 }
 
 /* Enhanced Dictionary Tooltip Styles */
@@ -196,4 +196,28 @@
   font-weight: 500;
   font-size: 15px;
   margin-bottom: 8px;
+}
+
+/* 類義語セクション */
+.synonyms-section {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(96, 165, 250, 0.1);
+  border-left: 3px solid rgba(96, 165, 250, 0.6);
+  border-radius: 4px;
+}
+
+.synonyms-label {
+  font-size: 11px;
+  color: #60a5fa;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-right: 6px;
+}
+
+.synonyms-list {
+  font-size: 13px;
+  color: #93c5fd;
+  font-weight: 500;
 }

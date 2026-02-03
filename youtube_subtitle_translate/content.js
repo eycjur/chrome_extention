@@ -4,27 +4,20 @@ class YouTubeSubtitleTranslator {
     this.pausedByExtension = false;
     this.translationTooltip = null;
     this.currentHoveredElement = null;
+
     this.settings = {
-      // cspell:disable-next-line
-      deeplApiKey: ''
+      deeplApiKey: window.CONFIG?.DEEPL_API_KEY || ''
     };
+
+    if (!this.settings.deeplApiKey) {
+      console.warn('[YouTube Translator] API key not configured');
+    }
+
     this.init();
   }
 
   init() {
-    this.loadSettings();
     this.waitForYouTubeLoad();
-  }
-
-  loadSettings() {
-    if (typeof chrome !== 'undefined' && chrome.storage) {
-      chrome.storage.sync.get({
-        // cspell:disable-next-line
-        deeplApiKey: ''
-      }, (items) => {
-        this.settings = items;
-      });
-    }
   }
 
   waitForYouTubeLoad() {
@@ -46,6 +39,8 @@ class YouTubeSubtitleTranslator {
   detectVideo() {
     this.video = document.querySelector('video.html5-main-video');
     if (this.video) {
+      this.isVideoPlaying = !this.video.paused;
+
       this.video.addEventListener('play', () => {
         this.isVideoPlaying = true;
       });
@@ -55,6 +50,8 @@ class YouTubeSubtitleTranslator {
           this.isVideoPlaying = false;
         }
       });
+    } else {
+      console.warn('[YouTube Translator] Video element not found');
     }
   }
 
@@ -100,13 +97,17 @@ class YouTubeSubtitleTranslator {
     const segment = event.target;
     this.currentHoveredElement = segment;
 
+    // ホバーした瞬間に動画を一時停止
     if (this.video && this.isVideoPlaying && !this.pausedByExtension) {
       this.video.pause();
       this.pausedByExtension = true;
     }
 
     const wordAtPosition = this.getWordAtMousePosition(event);
-    if (!wordAtPosition) return;
+
+    if (!wordAtPosition) {
+      return;
+    }
 
     const sentenceText = this.getFullSentence();
 
@@ -164,44 +165,42 @@ class YouTubeSubtitleTranslator {
     }
 
     if (!range) {
-      return event.target.textContent.trim().split(/\s+/)[0];
+      const fullText = event.target.textContent.trim();
+      const firstWord = fullText.split(/\s+/)[0].replace(/[^\w\s'-]/g, '').trim();
+      return firstWord;
     }
 
     const textNode = range.startContainer;
     if (textNode.nodeType !== Node.TEXT_NODE) {
-      return event.target.textContent.trim().split(/\s+/)[0];
+      const fullText = event.target.textContent.trim();
+      const firstWord = fullText.split(/\s+/)[0].replace(/[^\w\s'-]/g, '').trim();
+      return firstWord;
     }
 
     const text = textNode.textContent;
     const offset = range.startOffset;
 
-    const words = text.split(/\s+/);
-    let currentPos = 0;
-
-    for (const word of words) {
-      const wordStart = text.indexOf(word, currentPos);
-      const wordEnd = wordStart + word.length;
-
-      if (offset >= wordStart && offset <= wordEnd) {
-        return word.replace(/[^\w\s'-]/g, '').trim();
-      }
-      currentPos = wordEnd;
-    }
-
+    // カーソル位置の前後から単語の境界を見つける
     const beforeCursor = text.substring(0, offset);
     const afterCursor = text.substring(offset);
 
-    const wordStart = Math.max(
-      beforeCursor.lastIndexOf(' '),
-      beforeCursor.lastIndexOf('\n'),
-      beforeCursor.lastIndexOf('\t')
-    ) + 1;
+    // 単語の開始位置を見つける（スペース、改行、タブの直後）
+    let wordStart = 0;
+    const lastSpace = beforeCursor.lastIndexOf(' ');
+    const lastNewline = beforeCursor.lastIndexOf('\n');
+    const lastTab = beforeCursor.lastIndexOf('\t');
+    wordStart = Math.max(lastSpace, lastNewline, lastTab) + 1;
 
-    const wordEndMatch = afterCursor.match(/[\s\n\t]/);
-    const wordEnd = wordEndMatch ? offset + wordEndMatch.index : text.length;
+    // 単語の終了位置を見つける（次のスペース、改行、タブ）
+    const nextSpaceMatch = afterCursor.match(/[\s\n\t]/);
+    const wordEnd = nextSpaceMatch ? offset + nextSpaceMatch.index : text.length;
 
-    const word = text.substring(wordStart, wordEnd).replace(/[^\w\s'-]/g, '').trim();
-    return word || event.target.textContent.trim().split(/\s+/)[0];
+    // 単語を抽出
+    const rawWord = text.substring(wordStart, wordEnd);
+    // 句読点を除去
+    const cleanWord = rawWord.replace(/[^\w\s'-]/g, '').trim();
+
+    return cleanWord || text.split(/\s+/)[0].replace(/[^\w\s'-]/g, '').trim();
   }
 
   getFullSentence() {
@@ -244,7 +243,6 @@ class YouTubeSubtitleTranslator {
   }
 
   async translateText(text) {
-    // cspell:disable-next-line
     if (!this.settings.deeplApiKey) {
       return 'DeepL API キーが設定されていません';
     }
@@ -255,7 +253,6 @@ class YouTubeSubtitleTranslator {
           {
             action: 'translate',
             text: text,
-            // cspell:disable-next-line
             apiKey: this.settings.deeplApiKey
           },
           (response) => {
@@ -333,6 +330,18 @@ class YouTubeSubtitleTranslator {
         }).join('');
       }
 
+      // 類義語情報
+      let synonymsHTML = '';
+      if (dict.synonyms && dict.synonyms.length > 0) {
+        const synonymsList = dict.synonyms.slice(0, 5).join(', '); // 最大5つまで
+        synonymsHTML = `
+          <div class="synonyms-section">
+            <span class="synonyms-label">類義語:</span>
+            <span class="synonyms-list">${synonymsList}</span>
+          </div>
+        `;
+      }
+
       dictionaryHTML = `
         <div class="dictionary-section">
           <div class="word-header">
@@ -340,6 +349,7 @@ class YouTubeSubtitleTranslator {
             ${phoneticHTML}
           </div>
           ${meaningsHTML}
+          ${synonymsHTML}
         </div>
       `;
     }
