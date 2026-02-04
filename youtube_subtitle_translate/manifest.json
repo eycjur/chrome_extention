@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Subtitle Translator",
+  "version": "1.0.0",
+  "description": "Translate YouTube subtitles on hover with automatic video pause",
+
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+
+  "host_permissions": [
+    "https://api-free.deepl.com/*",
+    "https://api.deepl.com/*",
+    "https://raw.githubusercontent.com/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["config.js", "content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
