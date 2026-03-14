@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Gmail 返信アシスタント",
+  "version": "1.0.0",
+  "description": "Gemini AIを使ってGmailのスレッド内容をもとに返信文を作成します。",
+  "permissions": ["activeTab", "storage", "scripting"],
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Gmail 返信アシスタント - 設定"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

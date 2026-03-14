@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gmail 返信アシスタント - 設定</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-header">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 10h10a8 8 0 0 1 8 8v2M3 10l6 6m-6-6l6-6"/>
+    </svg>
+    Gmail 返信アシスタント
+  </div>
+
+  <div class="popup-body">
+    <div class="form-group">
+      <label for="api-key-input">Gemini API キー</label>
+      <div class="input-row">
+        <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off" spellcheck="false">
+        <button id="toggle-visibility-btn" class="icon-btn" title="表示/非表示">
+          <!-- Eye open -->
+          <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <!-- Eye off -->
+          <svg id="eye-off-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            style="display:none">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="model-select">使用モデル</label>
+      <select id="model-select">
+        <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (推奨・高速)</option>
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+      </select>
+    </div>
+
+    <button id="save-btn">保存</button>
+    <div id="status-msg" class="status-msg" style="display:none"></div>
+  </div>
+
+  <div class="popup-footer">
+    Gmail を開いて右下のボタンから使用できます
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
