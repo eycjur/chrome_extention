@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "AI ページ要約",
+  "version": "1.0.0",
+  "description": "Gemini AIを使ってウェブページやYouTube動画を要約します。右クリックまたはフローティングボタンから要約できます。",
+  "permissions": ["activeTab", "storage", "contextMenus", "scripting"],
+  "host_permissions": ["<all_urls>", "https://generativelanguage.googleapis.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AI ページ要約 - 設定"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; style-src 'self' https://unpkg.com; object-src 'self';"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

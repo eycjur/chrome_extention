@@ -1,0 +1,335 @@
+/* ================================================================
+   AI Summarizer – Injected Styles
+   All selectors are prefixed to avoid conflicts with host pages.
+   ================================================================ */
+
+/* ── Floating Action Button ──────────────────────────────────── */
+#ai-summarizer-fab {
+  position: fixed !important;
+  bottom: 28px !important;
+  right: 28px !important;
+  z-index: 2147483646 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 10px 16px !important;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  color: #fff !important;
+  border-radius: 100px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.45) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease !important;
+  user-select: none !important;
+  border: none !important;
+  outline: none !important;
+  line-height: 1 !important;
+}
+
+#ai-summarizer-fab:hover {
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 6px 28px rgba(99, 102, 241, 0.55) !important;
+}
+
+#ai-summarizer-fab:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+#ai-summarizer-fab svg {
+  flex-shrink: 0 !important;
+}
+
+/* ── Summary Panel ───────────────────────────────────────────── */
+#ai-summarizer-panel {
+  position: fixed !important;
+  top: 20px !important;
+  right: -440px !important;
+  width: 400px !important;
+  max-height: calc(100vh - 40px) !important;
+  background: #ffffff !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(0, 0, 0, 0.06) !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif !important;
+  transition: right 0.38s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+
+#ai-summarizer-panel.ais-visible {
+  right: 20px !important;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.ais-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 14px 16px !important;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+  flex-shrink: 0 !important;
+}
+
+.ais-header-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.ais-logo {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #fff !important;
+}
+
+.ais-title {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  letter-spacing: 0.02em !important;
+}
+
+.ais-header-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.ais-icon-btn {
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background 0.15s ease !important;
+  padding: 0 !important;
+}
+
+.ais-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+  color: #fff !important;
+}
+
+.ais-copy-btn.ais-copied {
+  background: rgba(16, 185, 129, 0.4) !important;
+}
+
+/* ── Source Bar ──────────────────────────────────────────────── */
+.ais-source {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 8px 16px !important;
+  background: #f8f7ff !important;
+  border-bottom: 1px solid #ede9fe !important;
+  flex-shrink: 0 !important;
+}
+
+.ais-source-icon {
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+.ais-source-label {
+  font-size: 11px !important;
+  color: #6d6b7a !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 320px !important;
+}
+
+/* ── Body ────────────────────────────────────────────────────── */
+.ais-body {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #d8d4f0 transparent !important;
+}
+
+.ais-body::-webkit-scrollbar {
+  width: 4px !important;
+}
+
+.ais-body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.ais-body::-webkit-scrollbar-thumb {
+  background: #d8d4f0 !important;
+  border-radius: 4px !important;
+}
+
+/* ── Loading State ───────────────────────────────────────────── */
+.ais-loading {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 14px !important;
+  padding: 40px 20px !important;
+  color: #7c7a8a !important;
+  font-size: 13px !important;
+}
+
+.ais-spinner {
+  width: 32px !important;
+  height: 32px !important;
+  border: 3px solid #ede9fe !important;
+  border-top-color: #6366f1 !important;
+  border-radius: 50% !important;
+  animation: ais-spin 0.7s linear infinite !important;
+}
+
+@keyframes ais-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Summary Content ─────────────────────────────────────────── */
+.ais-summary {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.ais-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 3px 10px !important;
+  border-radius: 100px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  width: fit-content !important;
+}
+
+.ais-badge-youtube {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+.ais-badge-selection {
+  background: #d1fae5 !important;
+  color: #059669 !important;
+}
+
+/* Summary text typography */
+.ais-summary-text {
+  color: #1e1c2e !important;
+  font-size: 13.5px !important;
+  line-height: 1.75 !important;
+}
+
+.ais-summary-text p {
+  margin: 0 0 10px !important;
+  padding: 0 !important;
+}
+
+.ais-summary-text p:last-child {
+  margin-bottom: 0 !important;
+}
+
+.ais-summary-text h1 {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  color: #1e1c2e !important;
+  margin: 14px 0 6px !important;
+  padding: 0 !important;
+  line-height: 1.3 !important;
+}
+
+.ais-summary-text h2 {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #1e1c2e !important;
+  margin: 12px 0 5px !important;
+  padding: 0 !important;
+  line-height: 1.3 !important;
+}
+
+.ais-summary-text h3 {
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #4c4a65 !important;
+  margin: 10px 0 4px !important;
+  padding: 0 !important;
+}
+
+.ais-summary-text ul {
+  margin: 6px 0 10px !important;
+  padding: 0 0 0 18px !important;
+  list-style: none !important;
+}
+
+.ais-summary-text ul li {
+  position: relative !important;
+  padding: 0 0 0 12px !important;
+  margin: 0 0 5px !important;
+  list-style: none !important;
+}
+
+.ais-summary-text ul li::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 9px !important;
+  width: 5px !important;
+  height: 5px !important;
+  border-radius: 50% !important;
+  background: #8b5cf6 !important;
+}
+
+.ais-summary-text strong {
+  font-weight: 700 !important;
+  color: #1e1c2e !important;
+}
+
+.ais-summary-text em {
+  font-style: italic !important;
+  color: #4c4a65 !important;
+}
+
+/* ── Error State ─────────────────────────────────────────────── */
+.ais-error {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 32px 20px !important;
+  text-align: center !important;
+  color: #dc2626 !important;
+}
+
+.ais-error svg {
+  opacity: 0.7 !important;
+}
+
+.ais-error strong {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #dc2626 !important;
+}
+
+.ais-error p {
+  font-size: 12px !important;
+  color: #6d6b7a !important;
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
