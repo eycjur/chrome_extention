@@ -6,7 +6,7 @@
 /* ── Floating Action Button ──────────────────────────────────── */
 #ai-summarizer-fab {
   position: fixed !important;
-  bottom: 28px !important;
+  bottom: 84px !important;
   right: 28px !important;
   z-index: 9000 !important;
   display: flex !important;
