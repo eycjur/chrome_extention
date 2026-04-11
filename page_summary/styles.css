@@ -6,9 +6,9 @@
 /* ── Floating Action Button ──────────────────────────────────── */
 #ai-summarizer-fab {
   position: fixed !important;
-  bottom: 28px !important;
+  bottom: 84px !important;
   right: 28px !important;
-  z-index: 2147483646 !important;
+  z-index: 9000 !important;
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
@@ -54,7 +54,7 @@
   box-shadow:
     0 24px 64px rgba(0, 0, 0, 0.18),
     0 0 0 1px rgba(0, 0, 0, 0.06) !important;
-  z-index: 2147483647 !important;
+  z-index: 9000 !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
