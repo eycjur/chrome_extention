@@ -28,8 +28,12 @@
     }
   });
 
+  let chatSession = null;
+  let followUpInFlight = false;
+
   // ─── Main Summarize Flow ──────────────────────────────────────────────
   async function startSummarize(selectedText) {
+    chatSession = null;
     showPanel();
     setLoadingState();
 
@@ -73,20 +77,105 @@
         text = text.substring(0, MAX_CHARS) + '\n\n[... テキストが長いため途中で切り捨てられました]';
       }
 
-      const result = await chrome.runtime.sendMessage({
-        action: 'callGeminiAPI',
-        text,
-        isYoutube,
-        isSelection,
-        apiKey,
-        model: model || 'gemini-2.5-flash-lite'
-      });
+      showSummaryStreamShell({ isYoutube, isSelection });
 
-      if (result.error) {
-        showError('API エラーが発生しました', result.error);
-      } else {
-        showSummary(result.summary, { isYoutube, isSelection });
-      }
+      let sessionUserPrompt = '';
+      let accumulated = '';
+      let streamError = false;
+      let streamErrorDetail = '';
+
+      await new Promise(resolve => {
+        const port = chrome.runtime.connect({ name: 'gemini-stream' });
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          try {
+            port.disconnect();
+          } catch (_) { /* ignore */ }
+          resolve();
+        };
+
+        const summaryEl = panel.querySelector('.ais-summary-text');
+        const scrollBody = () => {
+          const body = panel.querySelector('.ais-body');
+          if (body) body.scrollTop = body.scrollHeight;
+        };
+
+        port.onMessage.addListener(msg => {
+          if (msg.userPrompt != null && msg.userPrompt !== '') {
+            sessionUserPrompt = msg.userPrompt;
+            return;
+          }
+          if (msg.chunk) {
+            accumulated += msg.chunk;
+            summaryEl.classList.add('ais-summary-text');
+            summaryEl.textContent = accumulated;
+            scrollBody();
+          }
+          if (msg.error) {
+            streamError = true;
+            streamErrorDetail = msg.error;
+          }
+          if (msg.done) {
+            if (accumulated) {
+              summaryEl.innerHTML = formatMarkdown(accumulated);
+              summaryEl.classList.add('ais-summary-text');
+              summaryEl.classList.remove('ais-followup-streaming');
+              panel.querySelector('.ais-copy-btn').style.display = 'flex';
+            }
+
+            const compose = panel.querySelector('.ais-followup-compose');
+            if (!streamError && accumulated) {
+              chatSession = {
+                initialUserPrompt: sessionUserPrompt,
+                firstSummary: accumulated,
+                followUps: []
+              };
+              if (compose) {
+                compose.style.display = '';
+                attachFollowUpComposeListeners();
+              }
+            } else if (streamError && accumulated) {
+              showFollowUpError(streamErrorDetail || 'エラーで中断しました');
+            } else if (streamError && !accumulated) {
+              showError('API エラーが発生しました', streamErrorDetail || '不明なエラー');
+            } else if (!accumulated) {
+              showError(
+                'レスポンスからテキストを取得できませんでした',
+                'モデルの応答が空でした。しばらくしてから再度お試しください。'
+              );
+            }
+            finish();
+          }
+        });
+
+        port.onDisconnect.addListener(() => {
+          if (!settled) {
+            streamError = true;
+            streamErrorDetail = '接続が切れました';
+            if (!accumulated) {
+              showError('エラーが発生しました', streamErrorDetail);
+            } else {
+              summaryEl.innerHTML = formatMarkdown(accumulated);
+              summaryEl.classList.add('ais-summary-text');
+              summaryEl.classList.remove('ais-followup-streaming');
+              panel.querySelector('.ais-copy-btn').style.display = 'flex';
+              showFollowUpError(streamErrorDetail);
+            }
+            finish();
+          }
+        });
+
+        port.postMessage({
+          action: 'summarize',
+          text,
+          isYoutube,
+          isSelection,
+          apiKey,
+          model: model || 'gemini-2.5-flash-lite'
+        });
+      });
     } catch (err) {
       showError('エラーが発生しました', err.message);
     }
@@ -276,23 +365,189 @@
     `;
   }
 
-  function showSummary(summary, { isYoutube, isSelection }) {
-    if (!panel) return;
-    panel.querySelector('.ais-copy-btn').style.display = 'flex';
-
-    let badge = '';
+  function summaryBadgeHtml(isYoutube, isSelection) {
     if (isYoutube) {
-      badge = '<span class="ais-badge ais-badge-youtube">▶ YouTube 字幕から要約</span>';
-    } else if (isSelection) {
-      badge = '<span class="ais-badge ais-badge-selection">✂ 選択テキストを要約</span>';
+      return '<span class="ais-badge ais-badge-youtube">▶ YouTube 字幕から要約</span>';
     }
+    if (isSelection) {
+      return '<span class="ais-badge ais-badge-selection">✂ 選択テキストを要約</span>';
+    }
+    return '';
+  }
 
+  function showSummaryStreamShell({ isYoutube, isSelection }) {
+    if (!panel) return;
+    panel.querySelector('.ais-copy-btn').style.display = 'none';
+
+    const badge = summaryBadgeHtml(isYoutube, isSelection);
     panel.querySelector('.ais-body').innerHTML = `
-      <div class="ais-summary">
-        ${badge}
-        <div class="ais-summary-text">${formatMarkdown(summary)}</div>
+      <div class="ais-summary-layout">
+        <div class="ais-summary">
+          ${badge}
+          <div class="ais-summary-text ais-followup-streaming" aria-live="polite">
+            <span class="ais-stream-wait">要約を生成しています…</span>
+          </div>
+        </div>
+        <div class="ais-followup-thread" aria-live="polite"></div>
+        <p class="ais-followup-error" role="alert"></p>
+        <div class="ais-followup-compose" style="display: none">
+          <textarea class="ais-followup-input" rows="2" placeholder="続きの質問を入力（⌘+Enter / Ctrl+Enter で送信）"></textarea>
+          <button type="button" class="ais-followup-send">送信</button>
+        </div>
       </div>
     `;
+  }
+
+  function attachFollowUpComposeListeners() {
+    if (!panel) return;
+    const sendBtn = panel.querySelector('.ais-followup-send');
+    const input = panel.querySelector('.ais-followup-input');
+    if (!sendBtn || !input || sendBtn.dataset.aisBound === '1') return;
+    sendBtn.dataset.aisBound = '1';
+    input.dataset.aisBound = '1';
+    sendBtn.addEventListener('click', () => sendFollowUp());
+    input.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      if (!e.metaKey && !e.ctrlKey) return;
+      e.preventDefault();
+      sendFollowUp();
+    });
+  }
+
+  function setFollowUpBusy(busy) {
+    if (!panel) return;
+    const compose = panel.querySelector('.ais-followup-compose');
+    const input = panel.querySelector('.ais-followup-input');
+    const sendBtn = panel.querySelector('.ais-followup-send');
+    if (compose) compose.classList.toggle('ais-followup-compose-busy', busy);
+    if (input) input.disabled = busy;
+    if (sendBtn) sendBtn.disabled = busy;
+  }
+
+  function showFollowUpError(msg) {
+    const el = panel?.querySelector('.ais-followup-error');
+    if (el) el.textContent = msg || '';
+  }
+
+  async function sendFollowUp() {
+    if (!panel || !chatSession || followUpInFlight) return;
+
+    const input = panel.querySelector('.ais-followup-input');
+    const q = input?.value?.trim();
+    if (!q) return;
+
+    showFollowUpError('');
+
+    const { apiKey, model } = await chrome.storage.sync.get(['apiKey', 'model']);
+    if (!apiKey) {
+      showFollowUpError('APIキーが設定されていません。拡張機能のポップアップから設定してください。');
+      return;
+    }
+
+    const contents = [
+      { role: 'user', text: chatSession.initialUserPrompt },
+      { role: 'model', text: chatSession.firstSummary }
+    ];
+    for (const ex of chatSession.followUps) {
+      contents.push({ role: 'user', text: ex.user });
+      contents.push({ role: 'model', text: ex.assistant });
+    }
+    contents.push({ role: 'user', text: q });
+
+    const thread = panel.querySelector('.ais-followup-thread');
+    const pair = document.createElement('div');
+    pair.className = 'ais-followup-pair ais-followup-pair-streaming';
+    pair.innerHTML = `
+      <div class="ais-followup-q-label">あなた</div>
+      <div class="ais-followup-q">${escapeHtml(q).replace(/\n/g, '<br>')}</div>
+      <div class="ais-followup-a-label">回答</div>
+      <div class="ais-followup-a ais-followup-streaming" aria-live="polite">
+        <span class="ais-stream-wait">応答を生成しています…</span>
+      </div>
+    `;
+    thread.appendChild(pair);
+    const assistantEl = pair.querySelector('.ais-followup-a');
+    const scrollFollowup = () => {
+      const body = panel.querySelector('.ais-body');
+      if (body) body.scrollTop = body.scrollHeight;
+    };
+    scrollFollowup();
+
+    followUpInFlight = true;
+    setFollowUpBusy(true);
+
+    let accumulated = '';
+    let streamError = false;
+
+    try {
+      await new Promise(resolve => {
+        const port = chrome.runtime.connect({ name: 'gemini-stream' });
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          try {
+            port.disconnect();
+          } catch (_) { /* ignore */ }
+          resolve();
+        };
+
+        port.onMessage.addListener(msg => {
+          if (msg.chunk) {
+            accumulated += msg.chunk;
+            assistantEl.classList.add('ais-summary-text');
+            assistantEl.textContent = accumulated;
+            scrollFollowup();
+          }
+          if (msg.error) {
+            streamError = true;
+            showFollowUpError(msg.error);
+          }
+          if (msg.done) {
+            if (accumulated) {
+              assistantEl.innerHTML = formatMarkdown(accumulated);
+              assistantEl.classList.add('ais-summary-text');
+              if (!streamError) {
+                chatSession.followUps.push({ user: q, assistant: accumulated });
+                input.value = '';
+              }
+            } else {
+              pair.remove();
+            }
+            pair.classList.remove('ais-followup-pair-streaming');
+            assistantEl.classList.remove('ais-followup-streaming');
+            finish();
+          }
+        });
+
+        port.onDisconnect.addListener(() => {
+          if (!settled) {
+            streamError = true;
+            showFollowUpError('接続が切れました');
+            if (accumulated) {
+              assistantEl.innerHTML = formatMarkdown(accumulated);
+              assistantEl.classList.add('ais-summary-text');
+            } else {
+              pair.remove();
+            }
+            finish();
+          }
+        });
+
+        port.postMessage({
+          action: 'followup',
+          contents,
+          apiKey,
+          model: model || 'gemini-2.5-flash-lite'
+        });
+      });
+    } catch (err) {
+      showFollowUpError(err.message || '送信に失敗しました');
+      pair.remove();
+    } finally {
+      followUpInFlight = false;
+      setFollowUpBusy(false);
+    }
   }
 
   function showError(title, detail) {
