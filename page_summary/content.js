@@ -6,6 +6,26 @@
   window.__aiSummarizerLoaded = true;
 
   // ─── Floating Button ─────────────────────────────────────────────────
+  const fabWrap = document.createElement('div');
+  fabWrap.id = 'ai-summarizer-fab-wrap';
+
+  const fabCloseBtn = document.createElement('button');
+  fabCloseBtn.id = 'ai-summarizer-fab-close';
+  fabCloseBtn.type = 'button';
+  fabCloseBtn.title = 'ボタンを非表示';
+  fabCloseBtn.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  `;
+  fabCloseBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    fabWrap.style.display = 'none';
+  });
+
   const floatBtn = document.createElement('div');
   floatBtn.id = 'ai-summarizer-fab';
   floatBtn.title = 'このページを要約する';
@@ -17,8 +37,11 @@
       <path d="M2 12l10 5 10-5"/>
     </svg>
   `;
-  document.body.appendChild(floatBtn);
   floatBtn.addEventListener('click', () => startSummarize(null));
+
+  fabWrap.appendChild(fabCloseBtn);
+  fabWrap.appendChild(floatBtn);
+  document.body.appendChild(fabWrap);
 
   // ─── Message Listener (from background.js context menu) ──────────────
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

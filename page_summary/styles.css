@@ -4,11 +4,42 @@
    ================================================================ */
 
 /* ── Floating Action Button ──────────────────────────────────── */
-#ai-summarizer-fab {
+#ai-summarizer-fab-wrap {
   position: fixed !important;
   bottom: 84px !important;
   right: 28px !important;
   z-index: 9000 !important;
+}
+
+#ai-summarizer-fab-close {
+  position: absolute !important;
+  top: -6px !important;
+  right: -6px !important;
+  z-index: 1 !important;
+  width: 18px !important;
+  height: 18px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  border-radius: 50% !important;
+  background: rgba(15, 15, 20, 0.72) !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25) !important;
+  transition: background 0.15s ease, transform 0.15s ease !important;
+  line-height: 1 !important;
+  outline: none !important;
+}
+
+#ai-summarizer-fab-close:hover {
+  background: rgba(15, 15, 20, 0.9) !important;
+  transform: scale(1.08) !important;
+}
+
+#ai-summarizer-fab {
+  position: relative !important;
   display: flex !important;
   align-items: center !important;
   gap: 6px !important;
